@@ -1,0 +1,19 @@
+
+#include <IRremote.h>
+
+#define REMOTE_RECV_PIN 14
+
+#define GO_FORWARD 0xFFC23D
+#define GO_BACKWARD 0xFF22DD
+#define STOP_CAR 0xFF02FD
+#define FOLLOW_LINE 0xFF30CF
+#define US_SENSOR_TEST 0xFF18E7
+#define IR_SENSOR_TEST 0xFF7A85
+#define FOLLOW_WALL_L_PID 0xFF10EF
+#define FOLLOW_WALL_L_F_PID 0xFF38C7
+
+IRrecv SETUP_REMOTE(void);
+long GET_REMOTE_CODE (IRrecv &irrecv);
+bool IS_REMOTE_BUTTON_STOP(long);
+
+

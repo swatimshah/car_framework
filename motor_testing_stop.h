@@ -1,0 +1,1 @@
+void MOTOR_TESTING_STOP (IRrecv irrecv);
