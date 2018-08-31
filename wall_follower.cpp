@@ -23,38 +23,114 @@ int WF_Left_Status=0;
 int WF_Front_Status=0;
 
 float WF_Error = 0;
-float WF_Kp = 11;//8;
-float WF_Ki = 0.003;//0.001; //0.000007; //0.00001
-float WF_Kd = 0.2; //0.2; //0.5;//0.07 //0.05 //0.037
+float WF_Kp = 30;//40;//30;//8;
+float WF_Ki = 0.003;//0.004;//0.003;//0.001; //0.000007; //0.00001
+float WF_Kd = 8;//13;//8; //0.2; //0.5;//0.07 //0.05 //0.037
+
+float MY_Kp_Front = 40;//50;//80;//8;
+float MY_Ki_Front = 0; //0.2; //0.5;//0.07 //0.05 //0.037
+float MY_Kd_Front = 20; //10;//20;//0.001; //0.000007; //0.00001
+
+
+float MY_Error_Front = 0;
+float MY_Correction_F = 0;
+float MY_Integral_Front = 0;
+float MY_Derivative_Front = 0;
+float MY_LastError_Front = 0;
+
+
 int WF_LeftTurnSpeed = 0;
 int WF_RightTurnSpeed = 0;
 int WF_Correction = 0;
 float WF_Integral = 0;
 float WF_Derivative = 0;
 float WF_LastError = 0;
-
-
+int rightTurnBegin = 0;
+int leftTurnBegin = 0;
+int straightLineBegin = 0;
 
 void WALL_FOLLOWER (IRrecv irrecv) {
 
      while (!IS_REMOTE_BUTTON_STOP(GET_REMOTE_CODE(irrecv))) {
 
-	      WF_Front_Status = WF_GET_FRONT_US_STATUS();
-	      WF_Left_Status = WF_GET_LEFT_US_STATUS();
+	WF_Front_Status = WF_GET_FRONT_US_STATUS();
 
-	      if(WF_Front_Status == NO_OBSTACLE && WF_Left_Status == OBSTACLE) {
-	        WF_CONTINUE_WALL();
-	      } else if(WF_Front_Status == NO_OBSTACLE && WF_Left_Status == NO_OBSTACLE) {
-	        WF_LEFT();
-	      } else {
-	        WF_RIGHT();
-//	        WF_CONTINUE_WALL();
-//        	WF_INITIALIZE_WALL();
-	      }
+    if(WF_Front_Status == OBSTACLE) {
 
-      }
+		if (rightTurnBegin == 0)
+		WF_INITIALIZE_WALL();
 
-	  WF_STOP();
+	    //WF_RIGHT();
+	    WF_CONTINUE_WALL_FRONT();
+
+ 		rightTurnBegin = 1;
+ 		straightLineBegin = 0;
+
+		continue;
+    }
+
+	rightTurnBegin = 0;
+
+    WF_Left = wf_sr04_left.Distance();
+    WF_Error = WF_Left - WF_DISTANCE;
+    WF_Integral = (WF_Error + WF_Integral);
+    WF_Derivative = (WF_Error - WF_LastError);
+
+    WF_Correction = WF_Kp * WF_Error + WF_Kd * WF_Derivative + WF_Ki * WF_Integral;
+
+    if (WF_Error < 10) {
+
+    leftTurnBegin = 0;
+
+	if (straightLineBegin == 0)
+		WF_INITIALIZE_WALL();
+
+	if(WF_Correction > 127 && WF_Correction > 0)
+		WF_Correction = 127;
+
+	if(WF_Correction < -127 && WF_Correction < 0)
+		WF_Correction = -127;
+
+    WF_LeftTurnSpeed = 128 - WF_Correction;
+    WF_RightTurnSpeed = 128 + WF_Correction;
+
+	straightLineBegin = 1;
+
+    } else {
+
+	if (leftTurnBegin == 0) {
+    	WF_INITIALIZE_WALL();
+		WF_INITIALIZE_WALL_FRONT();
+	}
+
+	int speed = 2.5 * WF_Error + 8 * WF_Derivative;
+
+	if (speed > 127 && speed > 0)
+		speed = 127;
+
+	if (speed < -127 && speed < 0)
+		speed = -127;
+
+    WF_LeftTurnSpeed = 128 - (speed);
+    WF_RightTurnSpeed = 128 + (speed);
+
+    leftTurnBegin = 1;
+    straightLineBegin = 0;
+
+    }
+
+    motor3.setSpeed(WF_LeftTurnSpeed);
+    motor3.run(FORWARD);
+    motor4.setSpeed(WF_RightTurnSpeed);
+    motor4.run(FORWARD);
+
+    WF_LastError = WF_Error;
+	WF_INITIALIZE_WALL_FRONT();
+//	straightLineBegin = 1;
+
+	}
+
+  WF_STOP();
 }
 
 
@@ -65,25 +141,45 @@ WF_LastError = 0;
 
 }
 
-void WF_CONTINUE_WALL (void)
-{
-    WF_Left = wf_sr04_left.Distance();
-    WF_Error = WF_Left - WF_DISTANCE;
-    WF_Integral = (WF_Error + WF_Integral);
-    WF_Derivative = (WF_Error - WF_LastError);
+void WF_INITIALIZE_WALL_FRONT(void) {
 
-    WF_Correction = WF_Kp * WF_Error + WF_Kd * WF_Derivative + WF_Ki * WF_Integral;
+MY_Integral_Front = 0;
+MY_Derivative_Front = 0;
+MY_LastError_Front = 0;
 
-    WF_LeftTurnSpeed = 128 - WF_Correction;
-    WF_RightTurnSpeed = 128 + WF_Correction;
-
-    motor3.setSpeed(WF_LeftTurnSpeed);
-    motor3.run(FORWARD);
-    motor4.setSpeed(WF_RightTurnSpeed);
-    motor4.run(FORWARD);
-
-    WF_LastError = WF_Error;
 }
+
+
+void WF_CONTINUE_WALL_FRONT(void) {
+
+        WF_Front = wf_sr04_front.Distance();
+        MY_Error_Front = (WF_Front - WF_FRONT_DISTANCE);
+        MY_Integral_Front = (MY_Error_Front + MY_Integral_Front);
+        MY_Derivative_Front = (MY_Error_Front - MY_LastError_Front);
+
+        MY_Correction_F = MY_Kp_Front * MY_Error_Front + MY_Kd_Front * MY_Derivative_Front + MY_Ki_Front * MY_Integral_Front;
+
+		if(MY_Correction_F > 127 && MY_Correction_F > 0)
+			MY_Correction_F = 127;
+
+		if(MY_Correction_F < -127 && MY_Correction_F < 0)
+			MY_Correction_F = -127;
+
+        WF_LeftTurnSpeed = 128 - MY_Correction_F;
+        WF_RightTurnSpeed = 128 + MY_Correction_F;
+
+        motor3.setSpeed(WF_LeftTurnSpeed);
+        motor3.run(FORWARD);
+        motor4.setSpeed(WF_RightTurnSpeed);
+        motor4.run(FORWARD);
+
+        MY_LastError_Front = MY_Error_Front;
+
+}
+
+
+
+
 
 int WF_GET_LEFT_US_STATUS(void) {
      if(wf_sr04_left.Distance() < WF_DISTANCE)

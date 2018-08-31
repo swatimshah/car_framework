@@ -8,16 +8,18 @@
 #define NO_OBSTACLE 0
 #define OBSTACLE 1
 
-#define WF_SPEED 180
+#define WF_SPEED 160
 #define WF_NO_SPEED 0
 
-#define WF_DISTANCE 10
-#define WF_FRONT_DISTANCE 16
+#define WF_DISTANCE 12
+#define WF_FRONT_DISTANCE 14
 
 void WF_LEFT (void);
 void WF_RIGHT (void);
 void WF_CONTINUE_WALL (void);
+void WF_CONTINUE_WALL_FRONT(void);
 void WF_INITIALIZE_WALL(void);
+void WF_INITIALIZE_WALL_FRONT(void);
 int WF_GET_LEFT_US_STATUS(void);
 int WF_GET_FRONT_US_STATUS(void);
 void WF_STOP (void);
